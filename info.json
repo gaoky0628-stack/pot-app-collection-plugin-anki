@@ -7,12 +7,14 @@
     {
       "key": "port",
       "display": "AnkiConnect 端口",
-      "type": "input"
+      "type": "input",
+      "default": "8765"
     },
     {
       "key": "deck",
       "display": "默认牌组",
-      "type": "input"
+      "type": "input",
+      "default": "Default"
     }
   ]
 }
