@@ -1,8 +1,18 @@
 {
   "id": "plugin.com.pot-app.anki",
-  "plugin_type": "collection",
-  "icon": "anki.svg",
+  "homepage": "https://github.com/你的用户名/pot-app-collection-plugin-anki",
   "display": "Anki",
-  "homepage": "https://github.com/pot-app/pot-app-collection-plugin-template",
-  "needs": [{ "key": "port", "display": "端口号" }]
+  "icon": "anki.svg",
+  "needs": [
+    {
+      "key": "port",
+      "display": "AnkiConnect 端口",
+      "type": "input"
+    },
+    {
+      "key": "deck",
+      "display": "默认牌组",
+      "type": "input"
+    }
+  ]
 }
