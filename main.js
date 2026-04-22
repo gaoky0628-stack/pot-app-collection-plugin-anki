@@ -1,102 +1,67 @@
+// main.js
 async function collection(source, target, options = {}) {
-    const { config, utils } = options;
-    const { http } = utils;
-    const { fetch, Boxy } = http;
+  const { config, utils, setResult } = options;
+  const { http } = utils;
+  const { fetch, Body } = http;
 
-    const { port = 8765 } = config;
+  // 1. 读取用户配置
+  const port = config.get("port") || "8765";
+  const deck = config.get("deck") || "Default";
+  const model = config.get("model") || "Basic"; // 如果你增加了 model 配置
 
-    async function ankiConnect(action, version, params = {}) {
-        let res = await fetch(`http://127.0.0.1:${port}`, {
-            method: 'POST',
-            body: Body.json({ action, version, params }),
-        });
-        return res.data;
-    }
-
-    function ankiText(target) {
-        let result = '';
-        if (typeof target === 'object') {
-            for (let explanation of target.explanations) {
-                result += explanation.trait + '. ';
-                let index = 0;
-                for (let explain of explanation.explains) {
-                    index++;
-                    if (index !== explanation.explains.length) {
-                        result += explain + '; ';
-                    } else {
-                        result += explain + '<br>';
-                    }
-                }
-            }
-        } else {
-            return target;
-        }
-
-        return result;
-    }
-
-    function ankiPronunciation(target) {
-        let results = [];
-        if (typeof target !== 'object' || target.pronunciations === undefined) {
-            return results;
-        }
-        for (let i = 0; i < target.pronunciations.length; i++) {
-            let pronunciation = target.pronunciations[i];
-
-            let region = pronunciation.region;
-            let symbol = pronunciation.symbol;
-
-            // make pronunciation symbol readable
-            region = region ? `[${region}]` : '';
-            symbol = symbol[0] === '/' ? symbol : `/${symbol}/`;
-            let regionSymbol = `${region} ${symbol}`;
-
-            let audio;
-            if (pronunciation.voice) {
-                // step1: convert number array to Char String
-                // step2: convert Char String to base64
-                let voiceString = String.fromCharCode(...pronunciation.voice);
-                let voice = btoa(voiceString);
-
-                let filename = `${region}_${source}.mp3`;
-                let fields = [`Voice${i + 1}`];
-
-                audio = { data: voice, filename, fields };
-            }
-            results.push({ regionSymbol, audio });
-        }
-        return results;
-    }
-
-    await ankiConnect('createDeck', 6, { deck: 'Pot' });
-
-    await ankiConnect('createModel', 6, {
-        modelName: 'Pot Card 2',
-        inOrderFields: ['Front', 'Back', 'Symbol1', 'Voice1', 'Symbol2', 'Voice2'],
-        isCloze: false,
-        cardTemplates: [
-            {
-                Name: 'Pot Card 2',
-                Front: '{{Front}}',
-                Back: '{{FrontSide}}<br>{{Symbol1}} {{Voice1}}<br>{{Symbol2}} {{Voice2}}<hr id=answer>{{Back}}',
-            },
-        ],
-    });
-
-    let pronunciations = ankiPronunciation(target);
-    await ankiConnect('addNote', 6, {
-        note: {
-            deckName: 'Pot',
-            modelName: 'Pot Card 2',
-            fields: {
-                Front: source,
-                Back: ankiText(target),
-                Symbol1: pronunciations[0] && pronunciations[0].regionSymbol,
-                Symbol2: pronunciations[1] && pronunciations[1].regionSymbol,
-            },
-            audio: pronunciations.map((pronunciation) => {
-                return pronunciation.audio;
-            }),
+  // 2. 构造 AnkiConnect 请求体
+  const requestBody = {
+    action: "addNote",
+    version: 6,
+    params: {
+      note: {
+        deckName: deck,
+        modelName: model,
+        fields: {
+          Front: source,   // 单词/句子原文
+          Back: target     // 翻译/解释
         },
+        options: {
+          allowDuplicate: false,
+          duplicateScope: "deck"
+        },
+        tags: ["pot-app"]  // 可添加标签便于管理
+      }
+    }
+  };
+
+  try {
+    // 3. 发送请求到 AnkiConnect
+    const response = await fetch(`http://127.0.0.1:${port}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: Body.json(requestBody)
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`网络错误: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    if (result.error) {
+      throw new Error(`AnkiConnect 返回错误: ${result.error}`);
+    }
+
+    // 4. 可选：通过 setResult 显示成功提示（如果 Pot 支持）
+    if (setResult) {
+      setResult(`已添加到牌组 "${deck}"`);
+    }
+
+    return true;
+  } catch (error) {
+    // 5. 错误处理：将错误信息显示给用户
+    if (setResult) {
+      setResult(`添加失败: ${error.message}`);
+    }
+    // 抛出错误让 Pot 记录日志
+    throw error;
+  }
 }
