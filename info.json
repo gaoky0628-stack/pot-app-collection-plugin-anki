@@ -1,6 +1,6 @@
 {
   "id": "plugin.com.pot-app.anki",
-  "homepage": "https://github.com/你的用户名/pot-app-collection-plugin-anki",
+  "homepage": "https://github.com/gaoky0628-stack/pot-app-collection-plugin-anki",
   "display": "Anki",
   "icon": "anki.svg",
   "needs": [
